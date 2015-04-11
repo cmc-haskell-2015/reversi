@@ -5,8 +5,8 @@ main :: IO ()
 main = undefined
 data Player = White | Black | Empty
 type Field = [[Player]]
-type Revert = Maybe [Field]
 type Move = (Field, Player, Int, Int)
+type Revert = Maybe Move
 
 instance Show Player where
 	show White = "x"
