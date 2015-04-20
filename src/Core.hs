@@ -169,12 +169,16 @@ start::Move->IO()
 -- Запуск консольной версии игры
 start board = do
 	printm board
-	putStr "Move> "
-	x <- getChar
-	s <- getChar
-	y <- getChar
-	n <- getChar
-	nextMove (digitToInt x) board (move board (digitToInt x) (digitToInt y))
+	if (not (canMove board)) then do
+		putStrLn "No moves for player"
+		nextMove 0 board (Just board)
+	else do
+		putStr "Move> "
+		x <- getChar
+		s <- getChar
+		y <- getChar
+		n <- getChar
+		nextMove (digitToInt x) board (move board (digitToInt x) (digitToInt y))
 
 resultGame::Move->Maybe Player
 -- Результат игры
@@ -197,6 +201,19 @@ winner::Maybe Player->IO()
 winner (Just White) = putStrLn "White wins!"
 winner (Just Black) = putStrLn "Black wins!"
 winner _ = putStrLn "Draw"
+
+checkField::Move->Int->Int->Bool
+-- Проверка поля на возможность хода с булевым результатом
+checkField f x y | check f x y == [] = False
+	|otherwise = True
+
+canMove::Move->Bool
+-- Проверка возможности хода
+canMove f = foldr (||) False [checkField f x y| x <- [1..8], y <- [1..8]]
+
+switchPlayer::Move->Move
+-- Переход хода в случае невозможности
+switchPlayer (f, p, w, b) = (f, (opp p), w, b)
 
 nextMove::Int->Move->Revert->IO()
 -- Инициализация следующего хода
