@@ -1,5 +1,5 @@
 module Core where
-import Main
+import Types
 import Data.Char
 
 initialize::Move

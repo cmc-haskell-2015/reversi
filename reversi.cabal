@@ -17,8 +17,8 @@ extra-source-files:  README.md
 cabal-version:       >=1.10
 
 executable reversi
-  main-is:             Interface.hs
-  -- other-modules:    Core.hs , Main.hs
+  main-is:             Main.hs
+  -- other-modules:    Core.hs , Types.hs
   -- other-extensions:    
   build-depends:       base >=4.6 && <4.8 , gloss
   hs-source-dirs:      src
