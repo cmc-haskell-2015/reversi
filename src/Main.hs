@@ -13,9 +13,13 @@ type World = Move
 windowWidth = 800
 windowHeight = windowWidth*3/4
 scaleFactor = windowHeight/480
+-- константа gridNumber определяет количество клеток
+-- на данный момент скорее для красоты
+-- потому что она не поддерживается core-частью программы
 gridNumber = 8
+gNumber = ceiling(gridNumber)
 gridSize = 480/(gridNumber+2)
-realGridSize = gridSize*windowHeight/480
+realGridSize = gridSize*scaleFactor
 circleRadius = gridSize/2
 
 -- Основная функция, которая запускает графику
@@ -38,13 +42,11 @@ drawWorld (field,player,a,b) = scale scaleFactor scaleFactor
     (pictures 
     [ forAll 1 1 drawSquare field,
     showGameOver player,
-    translate ( ( 270)) ( (200)) (drawChecker player),
-    translate ( (-250)) ( (200)) (drawChecker White),
-    translate ( (-280)) ( (120)) 
-      (scale ( (0.5)) ( (0.5)) (Text (show b))),
-    translate ( (-250)) ( (-60)) (drawChecker Black),
-    translate ( (-280)) ( (-140)) 
-      (scale ( (0.5)) ( (0.5)) (Text (show a))) ])
+    translate ( 270) ( 200) (drawChecker player),
+    translate (-250) ( 200) (drawChecker White),
+    translate (-280) ( 120) (scale 0.5 0.5 (Text (show b))),
+    translate (-250) (-60 ) (drawChecker Black),
+    translate (-280) (-140) (scale 0.5 0.5 (Text (show a))) ])
 
 -- Если игра окончена, эта функция выводит соответствующую надпись на экран
 showGameOver::Player->Picture
@@ -54,11 +56,14 @@ showGameOver _ = Blank
 
 -- Функция, которая разбирает доску на клеточки  
 forAll::Int->Int->(Player->Int->Int->Picture)->[[Player]]->Picture
-forAll 8 8 f ((t:ts):ls) = (drawSquare t 8 8)
-forAll 8 y f ((t:ts):ls) = pictures 
-  [(drawSquare t 8 y),(forAll 1 (y+1) f ls)]
-forAll x y f ((t:ts):ls) = pictures 
-  [(drawSquare t x y),(forAll (x+1) y f (ts:ls))]
+--forAll gridNumber gridNumber f ((t:ts):ls) =
+--  (drawSquare t gridNumber gridNumber)
+--forAll gridNumber y f ((t:ts):ls) = pictures 
+--  [(drawSquare t gridNumber y),(forAll 1 (y+1) f ls)]
+forAll x y f ((t:ts):ls)
+  | (x == gNumber) && (y == gNumber) = (drawSquare t gNumber gNumber)
+  | (x == gNumber) = pictures [(drawSquare t gNumber y),(forAll 1 (y+1) f ls)]
+  | otherwise = pictures [(drawSquare t x y),(forAll (x+1) y f (ts:ls))]
 
 -- Функция, которая рисует одну клетку доски в нужном месте картинки
 drawSquare::Player->Int->Int->Picture
