@@ -5,15 +5,25 @@ import Graphics.Gloss.Interface.Pure.Game
 
 type World = Move
 
-windowWidth = 640
-windowHeight = ceiling ((fromIntegral windowWidth)*3/4)
+-- окно всегда 3 на 4
+-- все сделано под базовый размер окна 640 на 480,
+-- потому что так при масшатбировании оно лучше смотрится
+-- и потому, что так не нужно заново подбирать волшебные константы, 
+-- отвечающие за положение объектов интерфейса
+windowWidth = 800
+windowHeight = windowWidth*3/4
+scaleFactor = windowHeight/480
+gridNumber = 8
+gridSize = 480/(gridNumber+2)
+realGridSize = gridSize*windowHeight/480
+circleRadius = gridSize/2
 
 -- Основная функция, которая запускает графику
 interface :: IO ()
 interface = do
   play display bgColor fps (initialize) drawWorld handleWorld updateWorld
   where
-    windowSize   = (windowWidth, windowHeight)
+    windowSize   = (ceiling windowWidth, ceiling windowHeight)
     windowOffset = (200, 200)
     display = InWindow "Reversi" windowSize windowOffset
     bgColor = white
@@ -24,14 +34,17 @@ main = interface
 
 -- Функция, которая рисует все
 drawWorld::World->Picture
-drawWorld (field,player,a,b) = pictures 
+drawWorld (field,player,a,b) = scale scaleFactor scaleFactor
+    (pictures 
     [ forAll 1 1 drawSquare field,
     showGameOver player,
-    translate 270 200 (drawChecker player),
-    translate (-250) 200 (drawChecker White),
-    translate (-280) 120 (scale 0.5 0.5 (Text (show b))),
-    translate (-250) (-60) (drawChecker Black),
-    translate (-280) (-140) (scale 0.5 0.5 (Text (show a))) ]
+    translate ( ( 270)) ( (200)) (drawChecker player),
+    translate ( (-250)) ( (200)) (drawChecker White),
+    translate ( (-280)) ( (120)) 
+      (scale ( (0.5)) ( (0.5)) (Text (show b))),
+    translate ( (-250)) ( (-60)) (drawChecker Black),
+    translate ( (-280)) ( (-140)) 
+      (scale ( (0.5)) ( (0.5)) (Text (show a))) ])
 
 -- Если игра окончена, эта функция выводит соответствующую надпись на экран
 showGameOver::Player->Picture
@@ -49,19 +62,24 @@ forAll x y f ((t:ts):ls) = pictures
 
 -- Функция, которая рисует одну клетку доски в нужном месте картинки
 drawSquare::Player->Int->Int->Picture
-drawSquare p x y = translate (50*(fromIntegral x-4)) (50*(fromIntegral y-4))
-  (pictures [Color black (rectangleWire 50 50), (drawChecker p)])
+drawSquare p x y = translate
+  (gridSize*(fromIntegral x-gridNumber/2))
+  (gridSize*(fromIntegral y-gridNumber/2))
+  (pictures [Color black (rectangleWire gridSize gridSize), (drawChecker p)])
 
 -- Функция, которая рисует одну шашку соответствующего цвета
 drawChecker::Player->Picture
-drawChecker White = Color black (circle 25)
-drawChecker Black = Color black (circleSolid 25)
+drawChecker White = Color black (circle circleRadius)
+drawChecker Black = Color black (circleSolid circleRadius)
 drawChecker _ = Blank
 
 -- Функция, которая реагирует на нажатие мыши
 handleWorld::Event->World->World
 handleWorld (EventKey (MouseButton LeftButton) Down _ (x, y)) board = 
-  nextMoveGraphic board (move board (ceiling (y/50 + 3.5)) (ceiling (x/50 + 3.5)))
+  nextMoveGraphic board 
+  (move board 
+    (ceiling (y/realGridSize + gridNumber/2 - 0.5))
+    (ceiling (x/realGridSize + gridNumber/2 - 0.5)))
 handleWorld _ board = board
 
 -- Функция, которая смотрит, "сделался" ли ход
