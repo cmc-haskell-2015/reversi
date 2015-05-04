@@ -2,174 +2,220 @@ module Core where
 import Types
 import Data.Char
 
-initialize::Move
--- Инициализация игрового поля
-initialize = (newGame (iniLines 8), White, 2, 2)
 
-newGame::Field->Field
+
+--------------------------------------------------------------------------------
+-- Основные функции
+--------------------------------------------------------------------------------
+
+-- Запуск игры
+initGame :: State
+initGame = State (newGame $ iniLines 8) Black (2, 2)
+
 -- Расстановка начальной позиции
+newGame :: Field -> Field
 newGame f = pushCheckers f (
-    (4, 4, Black):
-    (5, 5, Black):
-    (4, 5, White):
-    (5, 4, White):
+    ((4, 4), Black) :
+    ((5, 5), Black) :
+    ((4, 5), White) :
+    ((5, 4), White) :
     [])
 
-lineToString::[Player]->String
--- Для печати поля
-lineToString [] = ""
-lineToString (x:xs) = (show x) ++ " " ++ lineToString xs
+-- Инициализация горизонтали
+iniLines::Int->Field
+iniLines 0 = []
+iniLines x = iniCells 8 : iniLines (x-1)
 
-printm::Move->IO()
--- Печать поля на очередном ходе, чей ход и счёт
-printm (f, p, x, y) = do
-    printb f
-    putStrLn ("Move: " ++ (show p))
-    putStrLn ("Account: " ++ (show x) ++ ":" ++ (show y))
+-- Инициализация ячеек в горизонтали
+iniCells::Int->[Player]
+iniCells 0 = []
+iniCells x = Empty : iniCells (x-1)
 
-printb::Field->IO()
--- Печать игрового поля (_ - пусто, x - белые, o - чёрные)
-printb [] = putStrLn ""
-printb (x:xs) = do
-    putStrLn (lineToString x)
-    printb xs
-
-
-pushCheckers::Field->[(Int, Int, Player)]->Field
--- Изменение ячейеек поля
-pushCheckers f [] = f
-pushCheckers f ((x, y, p):xs) = pushCheckers (pushChecker f x y p) xs
-
-mpushChecker::Move->Int->Int->Player->Move
--- Изменение ячейки для структуры
-mpushChecker (f, a, b, c) x y p = ((pushChecker f x y p), a, b, c)
-
-pushChecker::Field->Int->Int->Player->Field
 -- Изменение ячейки поля
-pushChecker [] _ _ _ = []
-pushChecker (f:fs) x y p
-    | x == 1 = (pushCheckerLine f y p) : pushChecker fs 0 0 p
-    | otherwise = f : pushChecker fs (x - 1) y p
+push :: State -> Cell -> Player -> State
+push s c p = State f pl sc
+    where
+        f = pushChecker (board s) c p
+        pl = player s
+        sc = score s
 
-pushCheckerLine::[Player]->Int->Player->[Player]
+-- Изменение ячееек поля
+pushCheckers :: Field -> [(Cell, Player)] -> Field
+pushCheckers f [] = f
+pushCheckers f ((c, p):xs) = pushCheckers (pushChecker f c p) xs
+
+-- Изменение ячейки поля
+pushChecker :: Field -> Cell -> Player -> Field
+pushChecker [] _ _ = []
+pushChecker (f:fs) (x, y) p  
+    | x == 1 = (pushCheckerLine f y p) : pushChecker fs (0, 0) p
+    | otherwise = f : pushChecker fs (x - 1, y) p
+
 -- Изменение ячейки поля: техническая часть
+pushCheckerLine :: [Player] -> Int -> Player -> [Player]
 pushCheckerLine [] _ _ = []
 pushCheckerLine (f:fs) y p
     | y == 1 = p : pushCheckerLine fs 0 p
     | otherwise = f : pushCheckerLine fs (y - 1) p
 
-iniLines::Int->Field
--- Инициализация горизонтали
-iniLines 0 = []
-iniLines x = iniCells 8 : iniLines (x-1)
-
-iniCells::Int->[Player]
--- Инициализация ячеек в горизонтали
-iniCells 0 = []
-iniCells x = Empty : iniCells (x-1)
-
-look::Move->Int->Int->Maybe Player
 -- Получение значения ячейки по горизонтали и вертикали
-look (f,_,_,_) x y 
+look :: State -> Cell -> Maybe Player
+look s (x, y)
     | (x > 0 && x <= 8 && y > 0 && y <= 8) = Just (f!!(x-1)!!(y-1))
     | otherwise = Nothing
+    where f = (board s)
 
-
-check::Move->Int->Int->[Int]
 -- Проверка допустимости хода
-check f x y 
-    |(look f x y) == Just Empty = filter (walk f x y) (directions f x y)
+check :: State -> Cell -> [Int]
+check s c
+    |(look s c) == Just Empty = filter (walk s c) (directions s c)
     |otherwise = []
 
-getPos::Int->Int->Int->(Int, Int)
 -- Конвертация направления в координаты
-getPos x y 1 = (x-1, y-1)    -- влево вверх
-getPos x y 2 = (x-1, y)      -- вверх
-getPos x y 3 = (x-1, y+1)    -- вправо вверх
-getPos x y 4 = (x, y-1)      -- влево
-getPos x y 5 = (x, y)        -- никуда (центр)
-getPos x y 6 = (x, y+1)      -- вправо
-getPos x y 7 = (x+1, y-1)    -- влево вниз
-getPos x y 8 = (x+1, y)      -- вниз
-getPos x y 9 = (x+1, y+1)    -- вправо вниз
-getPos _ _ _ = (0, 0)
+getPos :: Cell -> Int -> Cell
+getPos (x, y) 1 = (x-1, y-1)    -- влево вверх
+getPos (x, y) 2 = (x-1, y)      -- вверх
+getPos (x, y) 3 = (x-1, y+1)    -- вправо вверх
+getPos (x, y) 4 = (x, y-1)      -- влево
+getPos (x, y) 5 = (x, y)        -- никуда (центр)
+getPos (x, y) 6 = (x, y+1)      -- вправо
+getPos (x, y) 7 = (x+1, y-1)    -- влево вниз
+getPos (x, y) 8 = (x+1, y)      -- вниз
+getPos (x, y) 9 = (x+1, y+1)    -- вправо вниз
+getPos _ _ = (0, 0)
 
-getPlayer::Move->Player
--- Получение игрока из структуры
-getPlayer (_,p,_,_) = p
-
-directions::Move->Int->Int->[Int]
 -- Получение возможных направлений для переворота
-directions f a b = range f a b 1
+directions :: State -> Cell -> [Int]
+directions s c = range s c 1
 
-opponent::Player->Player
 -- Получение оппонента игрока
+opponent :: Player -> Player
 opponent White = Black
 opponent Black = White
 opponent _ = Empty
 
-range::Move->Int->Int->Int->[Int]
 -- Получение списка направлений для переворота
-range _ _ _ 10 = []
-range f x y i 
-    |(look f u v == Just (opponent p)) && (i /= 5) = (i : range f x y (i+1))
-    |otherwise = range f x y (i+1)
+range :: State -> Cell -> Int -> [Int]
+range _ _ 10 = []
+range s c i 
+    |(look s n == Just (opponent p)) && (i /= 5) = (i : range s c (i+1))
+    |otherwise = range s c (i+1)
     where 
-        u = fst (getPos x y i)
-        v = snd (getPos x y i)
-        p = getPlayer f
+        p = (player s)
+        n = (getPos c i)
 
-walk::Move->Int->Int->Int->Bool
 -- Проверка направления на допустимость переворота
-walk f x y dir
-    |(look f u v == Just Empty) || (look f u v == Nothing) = False
-    |(look f u v == Just p) = True
-    |otherwise = walk f u v dir
-    where 
-        u = fst (getPos x y dir)
-        v = snd (getPos x y dir)
-        p = getPlayer f
+walk :: State -> Cell -> Int -> Bool
+walk s c dir
+    |(look s n == Just Empty) || (look s n == Nothing) = False
+    |(look s n == Just p) = True
+    |otherwise = walk s n dir
+    where
+        p = (player s)
+        n = (getPos c dir)
 
-revert::Move->Int->Int->Int->Move
 -- Переворот шашек по направлению
-revert f x y dir
-    |(look f u v == Just Empty) || (look f u v == Nothing) = f
-    |(look f u v == Just p) = f
-    |otherwise = revert (mpushChecker f u v p) u v dir
+revert :: State -> Cell -> Int -> State
+revert s c dir
+    |(look s n == Just Empty) || (look s n == Nothing) = s
+    |(look s n == Just p) = s
+    |otherwise = revert (push s n p) n dir
     where 
-        u = fst (getPos x y dir)
-        v = snd (getPos x y dir)
-        p = getPlayer f
+        p = (player s)
+        n = (getPos c dir)
 
-revertAll::Move->Int->Int->[Int]->Move
 -- Переворот шашек по всем допустимым направлениям
-revertAll f _ _ [] = f
-revertAll f x y (z:zs) = revert (revertAll f x y zs) x y z
+revertAll :: State -> Cell -> [Int] -> State
+revertAll s _ [] = s
+revertAll s c (z:zs) = revert (revertAll s c zs) c z
 
-countCheckers::Field->Player->Int
 -- Пересчёт количества шашек после хода
+countCheckers :: Field -> Player -> Int
 countCheckers f p = length (filter (==p) (foldr (++) [] f))
 
-recount::Move->Move
 -- Инициализация пересчёта шашек и смена игрока, делающего свой ход
-recount (f, p, _, _) 
-    | p == White = (f, Black, (countCheckers f Black), (countCheckers f White))
-    |p == Black = (f, White, (countCheckers f Black), (countCheckers f White))
-    |otherwise = (f, Empty, 0, 0)
+recount :: State -> State
+recount s = State (board s) (opponent $ player s) (w, b)
+    where
+        w = (countCheckers (board s) White)
+        b = (countCheckers (board s) Black)
 
-move::Move->Int->Int->Revert
 -- Ход игрока, если это возможно
-move f x y | dirs == [] = Nothing
-        |otherwise = Just (recount (revertAll (mpushChecker f x y p) x y dirs))
+mov :: State -> Cell -> Maybe State
+mov s c | dirs == [] = Nothing
+        |otherwise = Just (recount (revertAll (push s c p) c dirs))
     where 
-        dirs = check f x y
-        p = getPlayer f
+        dirs = check s c
+        p = (player s)
 
-start::Move->IO()
+-- Результат игры
+resultGame :: State -> Maybe Player
+resultGame s
+    | x == 0 = Just White -- Если у игрока не осталось шашек,
+    | y == 0 = Just Black -- победил его оппонент
+    | (x + y == 64) && x > y = Just Black -- Если всё поле заполнено, то
+    | (x + y == 64) && x < y = Just White -- побеждает тот, у кого больше шашек
+    | x == 32 && y == 32 = Just Empty -- Ничья, если шашек поровну
+    | otherwise = Nothing
+    where
+        x = fst $ score s
+        y = snd $ score s
+
+-- Проверка, есть ли победитель после очередного хода
+checkWinner :: State -> Bool
+checkWinner s 
+    | resultGame s == Nothing = False
+    | otherwise = True
+
+-- Проверка поля на возможность хода с булевым результатом
+checkField :: State -> Cell -> Bool
+checkField s c | check s c == [] = False
+    |otherwise = True
+
+-- Проверка возможности хода
+canMov :: State -> Bool
+canMov s = foldr (||) False [checkField s (x, y)| x <- [1..8], y <- [1..8]]
+
+-- Переход хода в случае невозможности
+switchMove :: State -> State
+switchMove s = State f (opponent p) sc
+    where
+        f = (board s)
+        p = (player s)
+        sc = (score s)
+
+
+
+--------------------------------------------------------------------------------
+-- Функции для работы с консольным интерфейсом игры
+--------------------------------------------------------------------------------
+
+-- Для печати поля
+lineToString :: [Player] -> String
+lineToString [] = ""
+lineToString (x:xs) = (show x) ++ " " ++ lineToString xs
+
+-- Печать игрового поля (_ - пусто, x - белые, o - чёрные)
+printb :: Field -> IO ()
+printb [] = putStrLn ""
+printb (x:xs) = do
+    putStrLn (lineToString x)
+    printb xs
+    return ()
+
+-- Печать текущего состояния
+prints :: State -> IO ()
+prints s = do
+    printb (board s)
+    putStrLn ("Move: " ++ (show (player s)))
+    putStrLn ("Account: " ++ (show $ fst $ score s) 
+        ++ ":" ++ (show $ snd $ score s))
+
 -- Запуск консольной версии игры
-start board = do
-    printm board
-    if (not (canMove board)) then do
+startCLI :: State -> IO ()
+startCLI board = do
+    prints board
+    if (not (canMov board)) then do
         putStrLn "No moves for player"
         nextMove 0 board (Just board)
     else do
@@ -178,54 +224,56 @@ start board = do
         _ <- getChar
         y <- getChar
         _ <- getChar
-        nextMove (digitToInt x) board (move board (digitToInt x) (digitToInt y))
+        nextMove (digitToInt x) board (mov board (digitToInt x, digitToInt y))
 
-resultGame::Move->Maybe Player
--- Результат игры
-resultGame (_, _, x, y) 
-    | x == 0 = Just White -- Если у игрока не осталось шашек,
-    | y == 0 = Just Black -- победил его оппонент
-    | (x + y == 64) && x > y = Just Black -- Если всё поле заполнено, то
-    | (x + y == 64) && x < y = Just White -- побеждает тот, у кого больше шашек
-    | x == 32 && y == 32 = Just Empty -- Ничья, если шашек поровну
-    | otherwise = Nothing
-
-checkWinner::Move->Bool
--- Проверка, есть ли победитель после очередного хода
-checkWinner f 
-    | resultGame f == Nothing = False
-    | otherwise = True
-
-winner::Maybe Player->IO()
 -- Печать победителя (или ничьи)
-winner (Just White) = putStrLn "White wins!"
-winner (Just Black) = putStrLn "Black wins!"
-winner _ = putStrLn "Draw"
+winnerCLI :: Maybe Player -> IO ()
+winnerCLI (Just White) = putStrLn "White wins!"
+winnerCLI (Just Black) = putStrLn "Black wins!"
+winnerCLI _ = putStrLn "Draw"
 
-checkField::Move->Int->Int->Bool
--- Проверка поля на возможность хода с булевым результатом
-checkField f x y | check f x y == [] = False
-    |otherwise = True
-
-canMove::Move->Bool
--- Проверка возможности хода
-canMove f = foldr (||) False [checkField f x y| x <- [1..8], y <- [1..8]]
-
-switchPlayer::Move->Move
--- Переход хода в случае невозможности
-switchPlayer (f, p, w, b) = (f, (opponent p), w, b)
-
-nextMove::Int->Move->Revert->IO()
 -- Инициализация следующего хода
-nextMove 0 (f, p, b, w) _ = start (f, (opponent p), b, w) -- Пас
+nextMove :: Int -> State -> Maybe State -> IO ()
+nextMove 0 s _ = startCLI (switchMove s) -- Пас
 nextMove 9 _ _ = putStrLn "End." -- Принудительное прерывание
 nextMove _ prev Nothing = do
     putStrLn "Wrong move"
-    start prev
+    startCLI prev
 nextMove _ _ (Just next) | checkWinner next = do
-        printm next
-        winner (resultGame next)
-    |otherwise = start next
+        prints next
+        winnerCLI (resultGame next)
+    |otherwise = startCLI next
 
-core :: IO ()
-core = undefined
+
+
+--------------------------------------------------------------------------------
+-- Совместимость с графическим интерфейсом (после его доработки будет убрано)
+--------------------------------------------------------------------------------
+
+-- Конвертация структур данных
+getMove :: State -> Move
+getMove s = (f, p, w, b)
+    where
+        f = board s
+        p = player s
+        w = fst $ score s
+        b = snd $ score s
+
+getRev :: Maybe State -> Revert
+getRev Nothing = Nothing
+getRev (Just s) = Just (getMove s)
+
+setMove :: Move -> State
+setMove (f, p, w, b) = State f p (w, b)
+
+initialize :: Move
+initialize = getMove initGame
+
+switchPlayer :: Move -> Move
+switchPlayer m = getMove $ switchMove $ setMove m
+
+canMove :: Move -> Bool
+canMove m = canMov $ setMove m
+
+move :: Move -> Int -> Int -> Revert
+move m x y = getRev $ mov (setMove m) (x, y)
