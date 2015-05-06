@@ -12,11 +12,6 @@ data State = State{
 
 type Cell = (Int, Int)
 
--- совместимость
-type Move = (Field, Player, Int, Int)
-type Revert = Maybe Move
-
-
 instance Show Player where
 	show White = "x"
 	show Black = "o"

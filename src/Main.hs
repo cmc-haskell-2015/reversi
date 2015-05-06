@@ -3,7 +3,7 @@ import Core
 import Types
 import Graphics.Gloss.Interface.Pure.Game
 
-type World = Move
+--type World = State
 
 -- окно всегда 3 на 4
 -- все сделано под базовый размер окна 640 на 480,
@@ -20,12 +20,12 @@ gridNumber = 8
 gNumber = ceiling(gridNumber)
 gridSize = 480/(gridNumber+2)
 realGridSize = gridSize*scaleFactor
-circleRadius = gridSize/2
+circleRadius = gridSize/2.2
 
 -- Основная функция, которая запускает графику
 interface :: IO ()
 interface = do
-  play display bgColor fps (initialize) drawWorld handleWorld updateWorld
+  play display bgColor fps (initGame) drawWorld handleWorld updateWorld
   where
     windowSize   = (ceiling windowWidth, ceiling windowHeight)
     windowOffset = (200, 200)
@@ -37,16 +37,16 @@ main :: IO ()
 main = interface
 
 -- Функция, которая рисует все
-drawWorld::World->Picture
-drawWorld (field,player,a,b) = scale scaleFactor scaleFactor
+drawWorld::State->Picture
+drawWorld s = scale scaleFactor scaleFactor
     (pictures 
-    [ forAll 1 1 drawSquare field,
-    showGameOver player,
-    translate ( 270) ( 200) (drawChecker player),
+    [ forAll (1, 1) (board s),
+    showGameOver (player s),
+    translate ( 270) ( 200) (drawChecker (player s)),
     translate (-250) ( 200) (drawChecker White),
-    translate (-280) ( 120) (scale 0.5 0.5 (Text (show b))),
+    translate (-280) ( 120) (scale 0.5 0.5 (Text (show (fst(score s))))),
     translate (-250) (-60 ) (drawChecker Black),
-    translate (-280) (-140) (scale 0.5 0.5 (Text (show a))) ])
+    translate (-280) (-140) (scale 0.5 0.5 (Text (show (snd(score s))))) ])
 
 -- Если игра окончена, эта функция выводит соответствующую надпись на экран
 showGameOver::Player->Picture
@@ -55,19 +55,19 @@ showGameOver Empty = translate (-100) (-220)
 showGameOver _ = Blank
 
 -- Функция, которая разбирает доску на клеточки  
-forAll::Int->Int->(Player->Int->Int->Picture)->[[Player]]->Picture
+forAll::Cell->Field->Picture
 --forAll gridNumber gridNumber f ((t:ts):ls) =
 --  (drawSquare t gridNumber gridNumber)
 --forAll gridNumber y f ((t:ts):ls) = pictures 
 --  [(drawSquare t gridNumber y),(forAll 1 (y+1) f ls)]
-forAll x y f ((t:ts):ls)
-  | (x == gNumber) && (y == gNumber) = (drawSquare t gNumber gNumber)
-  | (x == gNumber) = pictures [(drawSquare t gNumber y),(forAll 1 (y+1) f ls)]
-  | otherwise = pictures [(drawSquare t x y),(forAll (x+1) y f (ts:ls))]
+forAll (x, y) ((t:ts):ls)
+  | (x == gNumber) && (y == gNumber) = (drawSquare t (gNumber, gNumber))
+  | (x == gNumber) = pictures [(drawSquare t (gNumber, y)),(forAll (1, (y+1)) ls)]
+  | otherwise = pictures [(drawSquare t (x, y)),(forAll ((x+1), y) (ts:ls))]
 
 -- Функция, которая рисует одну клетку доски в нужном месте картинки
-drawSquare::Player->Int->Int->Picture
-drawSquare p x y = translate
+drawSquare::Player->Cell->Picture
+drawSquare p (x, y) = translate
   (gridSize*(fromIntegral x-gridNumber/2))
   (gridSize*(fromIntegral y-gridNumber/2))
   (pictures [Color black (rectangleWire gridSize gridSize), (drawChecker p)])
@@ -79,26 +79,31 @@ drawChecker Black = Color black (circleSolid circleRadius)
 drawChecker _ = Blank
 
 -- Функция, которая реагирует на нажатие мыши
-handleWorld::Event->World->World
-handleWorld (EventKey (MouseButton LeftButton) Down _ (x, y)) board = 
-  nextMoveGraphic board 
-  (move board 
-    (ceiling (y/realGridSize + gridNumber/2 - 0.5))
-    (ceiling (x/realGridSize + gridNumber/2 - 0.5)))
-handleWorld _ board = board
+-- При нажатии на поле пытается сделать ход в эту клетку поля
+handleWorld::Event->State->State
+handleWorld (EventKey (MouseButton LeftButton) Down _ (x, y)) s = 
+  nextMoveGraphic s 
+  (mov s 
+    ((ceiling (y/realGridSize + gridNumber/2 - 0.5)),
+     (ceiling (x/realGridSize + gridNumber/2 - 0.5))))
+handleWorld _ s = s
 
 -- Функция, которая смотрит, "сделался" ли ход
-nextMoveGraphic::Move->Revert->Move
+-- и если да, то делает его
+nextMoveGraphic::State->Maybe State->State
 nextMoveGraphic prev Nothing = prev
 nextMoveGraphic _ (Just next)
-  | (canMove next) = next
-  | (not (canMove next)) && (canMove (switchPlayer next)) = switchPlayer next
+  | (canMov next) = next
+  | (not (canMov next)) && (canMov (switchMove next)) = switchMove next
   | otherwise = (gameOver next)
 
 -- Функция, которая обнуляет текущего игрока как знак того, что игра окончена  
-gameOver::Move->Move
-gameOver (f, p, a, b) = (f, Empty, a, b)
+gameOver::State->State
+gameOver s = State f Empty sc
+    where
+        f = (board s)
+        sc = (score s)
 
 -- Функция, которая теоретически может обновлять мир по времени, но ничего не делает
-updateWorld :: Float -> World -> World
+updateWorld :: Float -> State -> State
 updateWorld _ = id

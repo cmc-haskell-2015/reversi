@@ -245,35 +245,3 @@ nextMove _ _ (Just next) | checkWinner next = do
     |otherwise = startCLI next
 
 
-
---------------------------------------------------------------------------------
--- Совместимость с графическим интерфейсом (после его доработки будет убрано)
---------------------------------------------------------------------------------
-
--- Конвертация структур данных
-getMove :: State -> Move
-getMove s = (f, p, w, b)
-    where
-        f = board s
-        p = player s
-        w = fst $ score s
-        b = snd $ score s
-
-getRev :: Maybe State -> Revert
-getRev Nothing = Nothing
-getRev (Just s) = Just (getMove s)
-
-setMove :: Move -> State
-setMove (f, p, w, b) = State f p (w, b)
-
-initialize :: Move
-initialize = getMove initGame
-
-switchPlayer :: Move -> Move
-switchPlayer m = getMove $ switchMove $ setMove m
-
-canMove :: Move -> Bool
-canMove m = canMov $ setMove m
-
-move :: Move -> Int -> Int -> Revert
-move m x y = getRev $ mov (setMove m) (x, y)
