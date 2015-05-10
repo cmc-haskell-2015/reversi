@@ -8,7 +8,8 @@ import Database.Persist.Sqlite
 import Control.Monad.IO.Class (liftIO)
 import Data.Conduit
 import qualified Data.Conduit.List as CL
-
+import Data.Time 
+import Data.Time.Clock
 
 --------------------------------------------------------------------------------
 -- Основные функции
@@ -241,7 +242,10 @@ winnerCLI _ = putStrLn "Draw"
 -- Инициализация следующего хода
 nextMove :: Int -> State -> Maybe State -> IO ()
 nextMove 0 s _ = startCLI (switchMove s) -- Пас
-nextMove 9 _ _ = putStrLn "End." -- Принудительное прерывание
+nextMove 9 s _ = do
+    t0 <- getCurrentTime
+    saveGame s "auto" (show t0)
+    putStrLn "End." -- Принудительное прерывание
 nextMove _ prev Nothing = do
     putStrLn "Wrong move"
     startCLI prev
@@ -274,14 +278,18 @@ unpackBoard l = [line l y | y <- [0..7]]
 line :: [Int] -> Int -> [Player]
 line x y = map unpackPlayer $ take 8 $ drop (y * 8) x
 
-saveGame :: State -> String -> IO ()
-saveGame s name = runSqlite dbPath $ do
+saveGame :: State -> String -> String -> IO ()
+saveGame s name time = runSqlite dbPath $ do
     runMigration migrateAll
-    insert $ Save name (packBoard s) (packPlayer $ player s)
+    insert $ Save name (packBoard s) (packPlayer $ player s) time
     return ()
 
 loadGame :: Maybe String -> IO ()
-loadGame Nothing = query unpackRow "SELECT board, move FROM Save LIMIT 0, 1"
+loadGame Nothing = query unpackRow 
+    "SELECT board, move FROM Save ORDER BY time DESC LIMIT 0, 1"
+loadGame (Just name) = query unpackRow $
+    "SELECT board, move FROM Save WHERE name='" ++ name
+    ++ "' ORDER BY time DESC LIMIT 0, 1"
 
 unpackRow :: [PersistValue] -> IO ()
 unpackRow (s:(p:ps)) = do
@@ -309,3 +317,8 @@ unpackState s p = startCLI
    (unpackBoard $ fromString $ unpack $ right $ fromPersistValueText s)
    (opponent $ unpackPl $ unpack $ right $ fromPersistValueText p)
    (0, 0)
+
+test :: IO ()
+test = do
+    t0 <- getCurrentTime
+    print t0
