@@ -1,7 +1,13 @@
 module Core where
+import Db
 import Types
 import Data.Char
-
+import Database.Persist.TH
+import Data.Text (Text, pack, unpack) 
+import Database.Persist.Sqlite
+import Control.Monad.IO.Class (liftIO)
+import Data.Conduit
+import qualified Data.Conduit.List as CL
 
 
 --------------------------------------------------------------------------------
@@ -244,4 +250,62 @@ nextMove _ _ (Just next) | checkWinner next = do
         winnerCLI (resultGame next)
     |otherwise = startCLI next
 
+--------------------------------------------------------------------------------
+-- Функции для cохранения и загрузки игры
+--------------------------------------------------------------------------------
 
+packBoard :: State -> [Int]
+packBoard s = map packPlayer $ foldr (++) [] b
+    where b = board s
+
+packPlayer :: Player -> Int
+packPlayer Empty = 0
+packPlayer White = 1
+packPlayer Black = 2
+
+unpackPlayer :: Int -> Player
+unpackPlayer 0 = Empty
+unpackPlayer 1 = White
+unpackPlayer 2 = Black
+
+unpackBoard :: [Int] -> Field
+unpackBoard l = [line l y | y <- [0..7]]
+
+line :: [Int] -> Int -> [Player]
+line x y = map unpackPlayer $ take 8 $ drop (y * 8) x
+
+saveGame :: State -> String -> IO ()
+saveGame s name = runSqlite dbPath $ do
+    runMigration migrateAll
+    insert $ Save name (packBoard s) (packPlayer $ player s)
+    return ()
+
+loadGame :: Maybe String -> IO ()
+loadGame Nothing = query unpackRow "SELECT board, move FROM Save LIMIT 0, 1"
+
+unpackRow :: [PersistValue] -> IO ()
+unpackRow (s:(p:ps)) = do
+    unpackState s p
+    return ()
+
+fromString :: String -> [Int]
+fromString [] = []
+fromString (x:xs) 
+    | x == '0' = 0:fromString xs
+    | x == '1' = 1:fromString xs
+    | x == '2' = 2:fromString xs
+    | otherwise = fromString xs
+
+unpackPl :: String -> Player
+unpackPl [] = Empty
+unpackPl (s:xs)
+    | s == '1' = White
+    | s == '2' = Black
+    | otherwise = Empty
+
+unpackState :: PersistValue -> PersistValue -> IO ()
+unpackState s p = startCLI
+   $ recount $ State 
+   (unpackBoard $ fromString $ unpack $ right $ fromPersistValueText s)
+   (opponent $ unpackPl $ unpack $ right $ fromPersistValueText p)
+   (0, 0)
