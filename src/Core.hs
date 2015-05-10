@@ -258,32 +258,38 @@ nextMove _ _ (Just next) | checkWinner next = do
 -- Функции для cохранения и загрузки игры
 --------------------------------------------------------------------------------
 
+-- Упаковка доски в список Int
 packBoard :: State -> [Int]
 packBoard s = map packPlayer $ foldr (++) [] b
     where b = board s
 
+-- Упаковка игрока в Int
 packPlayer :: Player -> Int
 packPlayer Empty = 0
 packPlayer White = 1
 packPlayer Black = 2
 
+-- Распаковка игрока из Int
 unpackPlayer :: Int -> Player
 unpackPlayer 0 = Empty
 unpackPlayer 1 = White
 unpackPlayer 2 = Black
 
+-- Распаков доски из списка Int
 unpackBoard :: [Int] -> Field
 unpackBoard l = [line l y | y <- [0..7]]
 
 line :: [Int] -> Int -> [Player]
 line x y = map unpackPlayer $ take 8 $ drop (y * 8) x
 
+-- Сохранить игру: состояние поля, имя сейва, время сейва
 saveGame :: State -> String -> String -> IO ()
 saveGame s name time = runSqlite dbPath $ do
     runMigration migrateAll
     insert $ Save name (packBoard s) (packPlayer $ player s) time
     return ()
 
+-- Загрузка игры из сейва в БД
 loadGame :: Maybe String -> IO ()
 loadGame Nothing = query unpackRow 
     "SELECT board, move FROM Save ORDER BY time DESC LIMIT 0, 1"
@@ -291,11 +297,13 @@ loadGame (Just name) = query unpackRow $
     "SELECT board, move FROM Save WHERE name='" ++ name
     ++ "' ORDER BY time DESC LIMIT 0, 1"
 
+-- Распаковка строки сейва в БД
 unpackRow :: [PersistValue] -> IO ()
 unpackRow (s:(p:ps)) = do
     unpackState s p
     return ()
 
+-- Распаковка списка из БД
 fromString :: String -> [Int]
 fromString [] = []
 fromString (x:xs) 
@@ -304,6 +312,7 @@ fromString (x:xs)
     | x == '2' = 2:fromString xs
     | otherwise = fromString xs
 
+-- Распаковка игрока из БД
 unpackPl :: String -> Player
 unpackPl [] = Empty
 unpackPl (s:xs)
@@ -311,14 +320,10 @@ unpackPl (s:xs)
     | s == '2' = Black
     | otherwise = Empty
 
+-- Распаковка состояния и возобновление игры из сейва
 unpackState :: PersistValue -> PersistValue -> IO ()
 unpackState s p = startCLI
    $ recount $ State 
    (unpackBoard $ fromString $ unpack $ right $ fromPersistValueText s)
    (opponent $ unpackPl $ unpack $ right $ fromPersistValueText p)
    (0, 0)
-
-test :: IO ()
-test = do
-    t0 <- getCurrentTime
-    print t0
