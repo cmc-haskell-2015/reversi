@@ -20,7 +20,7 @@ executable reversi
   main-is:             Main.hs
   -- other-modules:    Core.hs , Types.hs, Interface.hs
   -- other-extensions:    
-  build-depends:       base >=4.6 && <4.8 , gloss
+  build-depends:       base >=4.6 && <4.8 , gloss, persistent
   hs-source-dirs:      src
   default-language:    Haskell2010
 
