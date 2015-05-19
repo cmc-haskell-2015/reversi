@@ -10,6 +10,7 @@ import Data.Conduit
 import qualified Data.Conduit.List as CL
 import Data.Time 
 import Data.Time.Clock
+import Data.List.Split
 
 --------------------------------------------------------------------------------
 -- Основные функции
@@ -218,6 +219,7 @@ prints s = do
     putStrLn ("Account: " ++ (show $ fst $ score s) 
         ++ ":" ++ (show $ snd $ score s))
 
+
 -- Запуск консольной версии игры
 startCLI :: State -> IO ()
 startCLI board = do
@@ -227,11 +229,29 @@ startCLI board = do
         nextMove 0 board (Just board)
     else do
         putStr "Move> "
-        x <- getChar
-        _ <- getChar
-        y <- getChar
-        _ <- getChar
-        nextMove (digitToInt x) board (mov board (digitToInt x, digitToInt y))
+        s <- getLine
+        parseCLI board $ splitOn " " s
+        return ()
+
+-- Парсинг команды от игрока
+parseCLI :: State -> [String] -> IO ()
+parseCLI board [] = do
+    putStr "Move> "
+    s <- getLine
+    parseCLI board $ splitOn " " s
+parseCLI board (x:(y:ys)) 
+    | x == "save" = do
+        t0 <- getCurrentTime
+        saveGame board y $ show t0
+        parseCLI board []
+    | x == "load" = do
+        loadGame $ Just y
+    | otherwise = nextMove (read x :: Int) board 
+        (mov board (read x :: Int, read y :: Int))
+parseCLI board (x:xs)       
+    | x == "exit" = do
+        putStrLn "End."
+        return () 
 
 -- Печать победителя (или ничьи)
 winnerCLI :: Maybe Player -> IO ()
@@ -242,17 +262,50 @@ winnerCLI _ = putStrLn "Draw"
 -- Инициализация следующего хода
 nextMove :: Int -> State -> Maybe State -> IO ()
 nextMove 0 s _ = startCLI (switchMove s) -- Пас
-nextMove 9 s _ = do
-    t0 <- getCurrentTime
-    saveGame s "auto" (show t0)
-    putStrLn "End." -- Принудительное прерывание
 nextMove _ prev Nothing = do
     putStrLn "Wrong move"
     startCLI prev
 nextMove _ _ (Just next) | checkWinner next = do
+        t0 <- getCurrentTime
         prints next
         winnerCLI (resultGame next)
+        saveRecord next (show t0)
     |otherwise = startCLI next
+
+--------------------------------------------------------------------------------
+-- Рекорды
+--------------------------------------------------------------------------------
+
+-- Запись результата игры в таблицу
+saveRecord :: State -> String -> IO ()
+saveRecord s t = runSqlite dbPath $ do
+    runMigration migrateAll
+    insert $ Record (packMaybe winner) x y t
+    return ()
+    where 
+        winner = resultGame s
+        x = fst $ score s
+        y = snd $ score s
+
+-- Вывод 10 лучших игр по счёту, при равном счёте -- по дате игры
+showRecords :: IO ()
+showRecords = query unpackRecord $
+    "SELECT winner, white, black, time FROM Record " ++ 
+    "ORDER BY MAX(white, black) ASC, time DESC LIMIT 0, 10"
+
+-- Печать строчки рекорда на экран
+unpackRecord :: [PersistValue] -> IO ()
+unpackRecord [] = putStrLn ""
+unpackRecord (winner:white:black:time:[]) = do
+    putStr $ show $ unpackPl $ unpack $ right $ fromPersistValueText winner
+    putStr " "
+    putStr $ unpack $ right $ fromPersistValueText white
+    putStr ":"
+    putStr $ unpack $ right $ fromPersistValueText black
+    putStr " "
+    putStr $ unpack $ right $ fromPersistValueText time
+    putStrLn ""
+    return ()
 
 --------------------------------------------------------------------------------
 -- Функции для cохранения и загрузки игры
@@ -269,13 +322,19 @@ packPlayer Empty = 0
 packPlayer White = 1
 packPlayer Black = 2
 
+-- Упаковка игрока в Int
+packMaybe :: Maybe Player -> Int
+packMaybe (Just White) = 1
+packMaybe (Just Black) = 2
+packMaybe _ = 0
+
 -- Распаковка игрока из Int
 unpackPlayer :: Int -> Player
 unpackPlayer 0 = Empty
 unpackPlayer 1 = White
 unpackPlayer 2 = Black
 
--- Распаков доски из списка Int
+-- Распаковка доски из списка Int
 unpackBoard :: [Int] -> Field
 unpackBoard l = [line l y | y <- [0..7]]
 
