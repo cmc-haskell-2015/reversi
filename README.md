@@ -46,7 +46,11 @@ $ cd reversi
 $ cabal install
 ```
 
-После установки запуск осуществляется командой `reversi`:
+### Графический интерфейс
+
+![Скриншот начального положения шашек.](images/screenshot.png)
+
+Запуск графического интерфейса осуществляется командой `reversi`:
 
 ```
 $ reversi
@@ -56,7 +60,36 @@ $ reversi
 
 ```
 $ cd reversi
-$ cabal run
+$ cabal run reversi
+```
+
+### Интерфейс командной строки
+
+Запуск интерфейса командной строки осуществляется командой `reversi-cli`:
+
+```
+$ reversi-cli
+Preprocessing executable 'reversi-cli' for reversi-0.1...
+Running reversi-cli...
+_ _ _ _ _ _ _ _
+_ _ _ _ _ _ _ _
+_ _ _ _ _ _ _ _
+_ _ _ o x _ _ _
+_ _ _ x o _ _ _
+_ _ _ _ _ _ _ _
+_ _ _ _ _ _ _ _
+_ _ _ _ _ _ _ _
+
+Move: o
+Account: 2:2
+Move>
+```
+
+Для сборки и запуска текущей версии непосредственно из репозитория используйте `cabal run`:
+
+```
+$ cd reversi
+$ cabal run reversi-cli
 ```
 
 ## Документация
