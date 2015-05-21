@@ -1,5 +1,6 @@
 module Main where
-import Interface
+
+import Interface.GUI
 
 main :: IO ()
 main = interface

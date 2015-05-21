@@ -1,4 +1,6 @@
+-- | ???
 module Core where
+
 import Db
 import Types
 import Data.Char
@@ -12,15 +14,13 @@ import Data.Time
 import Data.Time.Clock
 import Data.List.Split
 
---------------------------------------------------------------------------------
--- Основные функции
---------------------------------------------------------------------------------
+-- * Основные функции
 
--- Запуск игры
+-- | Запуск игры.
 initGame :: State
 initGame = State (newGame $ iniLines 8) Black (2, 2)
 
--- Расстановка начальной позиции
+-- | Расстановка начальной позиции.
 newGame :: Field -> Field
 newGame f = pushCheckers f (
     ((4, 4), Black) :
@@ -29,17 +29,17 @@ newGame f = pushCheckers f (
     ((5, 4), White) :
     [])
 
--- Инициализация горизонтали
+-- | Инициализация горизонтали.
 iniLines::Int->Field
 iniLines 0 = []
 iniLines x = iniCells 8 : iniLines (x-1)
 
--- Инициализация ячеек в горизонтали
+-- | Инициализация ячеек в горизонтали.
 iniCells::Int->[Player]
 iniCells 0 = []
 iniCells x = Empty : iniCells (x-1)
 
--- Изменение ячейки поля
+-- | Изменение ячейки поля.
 push :: State -> Cell -> Player -> State
 push s c p = State f pl sc
     where
@@ -47,39 +47,39 @@ push s c p = State f pl sc
         pl = player s
         sc = score s
 
--- Изменение ячееек поля
+-- | Изменение ячееек поля.
 pushCheckers :: Field -> [(Cell, Player)] -> Field
 pushCheckers f [] = f
 pushCheckers f ((c, p):xs) = pushCheckers (pushChecker f c p) xs
 
--- Изменение ячейки поля
+-- | Изменение ячейки поля.
 pushChecker :: Field -> Cell -> Player -> Field
 pushChecker [] _ _ = []
 pushChecker (f:fs) (x, y) p  
     | x == 1 = (pushCheckerLine f y p) : pushChecker fs (0, 0) p
     | otherwise = f : pushChecker fs (x - 1, y) p
 
--- Изменение ячейки поля: техническая часть
+-- | Изменение ячейки поля: техническая часть.
 pushCheckerLine :: [Player] -> Int -> Player -> [Player]
 pushCheckerLine [] _ _ = []
 pushCheckerLine (f:fs) y p
     | y == 1 = p : pushCheckerLine fs 0 p
     | otherwise = f : pushCheckerLine fs (y - 1) p
 
--- Получение значения ячейки по горизонтали и вертикали
+-- | Получение значения ячейки по горизонтали и вертикали.
 look :: State -> Cell -> Maybe Player
 look s (x, y)
     | (x > 0 && x <= 8 && y > 0 && y <= 8) = Just (f!!(x-1)!!(y-1))
     | otherwise = Nothing
     where f = (board s)
 
--- Проверка допустимости хода
+-- | Проверка допустимости хода.
 check :: State -> Cell -> [Int]
 check s c
     |(look s c) == Just Empty = filter (walk s c) (directions s c)
     |otherwise = []
 
--- Конвертация направления в координаты
+-- | Конвертация направления в координаты.
 getPos :: Cell -> Int -> Cell
 getPos (x, y) 1 = (x-1, y-1)    -- влево вверх
 getPos (x, y) 2 = (x-1, y)      -- вверх
@@ -92,17 +92,17 @@ getPos (x, y) 8 = (x+1, y)      -- вниз
 getPos (x, y) 9 = (x+1, y+1)    -- вправо вниз
 getPos _ _ = (0, 0)
 
--- Получение возможных направлений для переворота
+-- | Получение возможных направлений для переворота.
 directions :: State -> Cell -> [Int]
 directions s c = range s c 1
 
--- Получение оппонента игрока
+-- | Получение оппонента игрока.
 opponent :: Player -> Player
 opponent White = Black
 opponent Black = White
 opponent _ = Empty
 
--- Получение списка направлений для переворота
+-- | Получение списка направлений для переворота.
 range :: State -> Cell -> Int -> [Int]
 range _ _ 10 = []
 range s c i 
@@ -112,7 +112,7 @@ range s c i
         p = (player s)
         n = (getPos c i)
 
--- Проверка направления на допустимость переворота
+-- | Проверка направления на допустимость переворота.
 walk :: State -> Cell -> Int -> Bool
 walk s c dir
     |(look s n == Just Empty) || (look s n == Nothing) = False
@@ -122,7 +122,7 @@ walk s c dir
         p = (player s)
         n = (getPos c dir)
 
--- Переворот шашек по направлению
+-- | Переворот шашек по направлению.
 revert :: State -> Cell -> Int -> State
 revert s c dir
     |(look s n == Just Empty) || (look s n == Nothing) = s
@@ -132,23 +132,23 @@ revert s c dir
         p = (player s)
         n = (getPos c dir)
 
--- Переворот шашек по всем допустимым направлениям
+-- | Переворот шашек по всем допустимым направлениям.
 revertAll :: State -> Cell -> [Int] -> State
 revertAll s _ [] = s
 revertAll s c (z:zs) = revert (revertAll s c zs) c z
 
--- Пересчёт количества шашек после хода
+-- | Пересчёт количества шашек после хода.
 countCheckers :: Field -> Player -> Int
 countCheckers f p = length (filter (==p) (foldr (++) [] f))
 
--- Инициализация пересчёта шашек и смена игрока, делающего свой ход
+-- | Инициализация пересчёта шашек и смена игрока, делающего свой ход.
 recount :: State -> State
 recount s = State (board s) (opponent $ player s) (w, b)
     where
         w = (countCheckers (board s) White)
         b = (countCheckers (board s) Black)
 
--- Ход игрока, если это возможно
+-- | Ход игрока, если это возможно.
 mov :: State -> Cell -> Maybe State
 mov s c | dirs == [] = Nothing
         |otherwise = Just (recount (revertAll (push s c p) c dirs))
@@ -156,7 +156,7 @@ mov s c | dirs == [] = Nothing
         dirs = check s c
         p = (player s)
 
--- Результат игры
+-- | Результат игры.
 resultGame :: State -> Maybe Player
 resultGame s
     | x == 0 = Just White -- Если у игрока не осталось шашек,
@@ -169,22 +169,22 @@ resultGame s
         x = fst $ score s
         y = snd $ score s
 
--- Проверка, есть ли победитель после очередного хода
+-- | Проверка, есть ли победитель после очередного хода.
 checkWinner :: State -> Bool
 checkWinner s 
     | resultGame s == Nothing = False
     | otherwise = True
 
--- Проверка поля на возможность хода с булевым результатом
+-- | Проверка поля на возможность хода с булевым результатом.
 checkField :: State -> Cell -> Bool
 checkField s c | check s c == [] = False
     |otherwise = True
 
--- Проверка возможности хода
+-- | Проверка возможности хода.
 canMov :: State -> Bool
 canMov s = foldr (||) False [checkField s (x, y)| x <- [1..8], y <- [1..8]]
 
--- Переход хода в случае невозможности
+-- | Переход хода в случае невозможности.
 switchMove :: State -> State
 switchMove s = State f (opponent p) sc
     where
@@ -192,91 +192,9 @@ switchMove s = State f (opponent p) sc
         p = (player s)
         sc = (score s)
 
+-- * Рекорды
 
-
---------------------------------------------------------------------------------
--- Функции для работы с консольным интерфейсом игры
---------------------------------------------------------------------------------
-
--- Для печати поля
-lineToString :: [Player] -> String
-lineToString [] = ""
-lineToString (x:xs) = (show x) ++ " " ++ lineToString xs
-
--- Печать игрового поля (_ - пусто, x - белые, o - чёрные)
-printb :: Field -> IO ()
-printb [] = putStrLn ""
-printb (x:xs) = do
-    putStrLn (lineToString x)
-    printb xs
-    return ()
-
--- Печать текущего состояния
-prints :: State -> IO ()
-prints s = do
-    printb (board s)
-    putStrLn ("Move: " ++ (show (player s)))
-    putStrLn ("Account: " ++ (show $ fst $ score s) 
-        ++ ":" ++ (show $ snd $ score s))
-
-
--- Запуск консольной версии игры
-startCLI :: State -> IO ()
-startCLI board = do
-    prints board
-    if (not (canMov board)) then do
-        putStrLn "No moves for player"
-        nextMove 0 board (Just board)
-    else do
-        putStr "Move> "
-        s <- getLine
-        parseCLI board $ splitOn " " s
-        return ()
-
--- Парсинг команды от игрока
-parseCLI :: State -> [String] -> IO ()
-parseCLI board [] = do
-    putStr "Move> "
-    s <- getLine
-    parseCLI board $ splitOn " " s
-parseCLI board (x:(y:ys)) 
-    | x == "save" = do
-        t0 <- getCurrentTime
-        saveGame board y $ show t0
-        parseCLI board []
-    | x == "load" = do
-        loadGame $ Just y
-    | otherwise = nextMove (read x :: Int) board 
-        (mov board (read x :: Int, read y :: Int))
-parseCLI board (x:xs)       
-    | x == "exit" = do
-        putStrLn "End."
-        return () 
-
--- Печать победителя (или ничьи)
-winnerCLI :: Maybe Player -> IO ()
-winnerCLI (Just White) = putStrLn "White wins!"
-winnerCLI (Just Black) = putStrLn "Black wins!"
-winnerCLI _ = putStrLn "Draw"
-
--- Инициализация следующего хода
-nextMove :: Int -> State -> Maybe State -> IO ()
-nextMove 0 s _ = startCLI (switchMove s) -- Пас
-nextMove _ prev Nothing = do
-    putStrLn "Wrong move"
-    startCLI prev
-nextMove _ _ (Just next) | checkWinner next = do
-        t0 <- getCurrentTime
-        prints next
-        winnerCLI (resultGame next)
-        saveRecord next (show t0)
-    |otherwise = startCLI next
-
---------------------------------------------------------------------------------
--- Рекорды
---------------------------------------------------------------------------------
-
--- Запись результата игры в таблицу
+-- | Запись результата игры в таблицу.
 saveRecord :: State -> String -> IO ()
 saveRecord s t = runSqlite dbPath $ do
     runMigration migrateAll
@@ -287,13 +205,13 @@ saveRecord s t = runSqlite dbPath $ do
         x = fst $ score s
         y = snd $ score s
 
--- Вывод 10 лучших игр по счёту, при равном счёте -- по дате игры
+-- | Вывод 10 лучших игр по счёту, при равном счёте -- по дате игры.
 showRecords :: IO ()
 showRecords = query unpackRecord $
     "SELECT winner, white, black, time FROM Record " ++ 
     "ORDER BY MAX(white, black) ASC, time DESC LIMIT 0, 10"
 
--- Печать строчки рекорда на экран
+-- | Печать строчки рекорда на экран.
 unpackRecord :: [PersistValue] -> IO ()
 unpackRecord [] = putStrLn ""
 unpackRecord (winner:white:black:time:[]) = do
@@ -307,62 +225,47 @@ unpackRecord (winner:white:black:time:[]) = do
     putStrLn ""
     return ()
 
---------------------------------------------------------------------------------
--- Функции для cохранения и загрузки игры
---------------------------------------------------------------------------------
+-- * Функции для cохранения и загрузки игры
 
--- Упаковка доски в список Int
+-- | Упаковка доски в список @'Int'@.
 packBoard :: State -> [Int]
 packBoard s = map packPlayer $ foldr (++) [] b
     where b = board s
 
--- Упаковка игрока в Int
+-- | Упаковка игрока в @'Int'@.
 packPlayer :: Player -> Int
 packPlayer Empty = 0
 packPlayer White = 1
 packPlayer Black = 2
 
--- Упаковка игрока в Int
+-- | Упаковка игрока в @'Int'@.
 packMaybe :: Maybe Player -> Int
 packMaybe (Just White) = 1
 packMaybe (Just Black) = 2
 packMaybe _ = 0
 
--- Распаковка игрока из Int
+-- | Распаковка игрока из @'Int'@.
 unpackPlayer :: Int -> Player
 unpackPlayer 0 = Empty
 unpackPlayer 1 = White
 unpackPlayer 2 = Black
 
--- Распаковка доски из списка Int
+-- | Распаковка доски из списка @'Int'@.
 unpackBoard :: [Int] -> Field
 unpackBoard l = [line l y | y <- [0..7]]
 
+-- | ???
 line :: [Int] -> Int -> [Player]
 line x y = map unpackPlayer $ take 8 $ drop (y * 8) x
 
--- Сохранить игру: состояние поля, имя сейва, время сейва
+-- | Сохранить игру: состояние поля, имя сейва, время сейва.
 saveGame :: State -> String -> String -> IO ()
 saveGame s name time = runSqlite dbPath $ do
     runMigration migrateAll
     insert $ Save name (packBoard s) (packPlayer $ player s) time
     return ()
 
--- Загрузка игры из сейва в БД
-loadGame :: Maybe String -> IO ()
-loadGame Nothing = query unpackRow 
-    "SELECT board, move FROM Save ORDER BY time DESC LIMIT 0, 1"
-loadGame (Just name) = query unpackRow $
-    "SELECT board, move FROM Save WHERE name='" ++ name
-    ++ "' ORDER BY time DESC LIMIT 0, 1"
-
--- Распаковка строки сейва в БД
-unpackRow :: [PersistValue] -> IO ()
-unpackRow (s:(p:ps)) = do
-    unpackState s p
-    return ()
-
--- Распаковка списка из БД
+-- | Распаковка списка из БД.
 fromString :: String -> [Int]
 fromString [] = []
 fromString (x:xs) 
@@ -371,7 +274,7 @@ fromString (x:xs)
     | x == '2' = 2:fromString xs
     | otherwise = fromString xs
 
--- Распаковка игрока из БД
+-- | Распаковка игрока из БД.
 unpackPl :: String -> Player
 unpackPl [] = Empty
 unpackPl (s:xs)
@@ -379,10 +282,3 @@ unpackPl (s:xs)
     | s == '2' = Black
     | otherwise = Empty
 
--- Распаковка состояния и возобновление игры из сейва
-unpackState :: PersistValue -> PersistValue -> IO ()
-unpackState s p = startCLI
-   $ recount $ State 
-   (unpackBoard $ fromString $ unpack $ right $ fromPersistValueText s)
-   (opponent $ unpackPl $ unpack $ right $ fromPersistValueText p)
-   (0, 0)

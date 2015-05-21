@@ -1,15 +1,25 @@
 {-# OPTIONS_GHC -Wall #-}
+
+-- | ???
 module Types where
 
-data Player = White | Black | Empty
+-- | ???
+data Player
+  = White   -- ^ ???
+  | Black   -- ^ ???
+  | Empty   -- ^ ???
+
+-- | ???
 type Field = [[Player]]
 
+-- | ???
 data State = State{
-	board :: Field,
-	player :: Player,
-	score :: (Int, Int)
+	board   :: Field,       -- ^ ???
+	player  :: Player,      -- ^ ???
+	score   :: (Int, Int)   -- ^ ???
 }
 
+-- | ???
 type Cell = (Int, Int)
 
 instance Show Player where
