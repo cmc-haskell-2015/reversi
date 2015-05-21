@@ -4,7 +4,39 @@
 
 Игра «Реверси».
 
-## Установка
+## Системные требования
+
+### SQLite
+
+#### Windows
+
+Скачать SQLite можно на [официальном сайте](http://www.sqlite.org/download.html).
+Вам понадобятся бинарные файлы (Precompiled binaries) для DLL (`sqlite-dll-*`).
+
+Распакуйте скачанный архив в `C:\sqlite` и выполните:
+
+```
+$ cd reversi
+$ cabal install sqlite --extra-include-dirs=C:\sqlite --extra-lib-dirs=C:\sqlite
+```
+
+#### Mac OS X
+
+Проще всего установить SQLite, используя [Homebrew](http://brew.sh):
+
+```
+$ brew install sqlite3
+```
+
+#### Debian/Ubuntu
+
+Установите SQLite из репозиториев:
+
+```
+$ sudo apt-get install sqlite3 libsqlite3-dev
+```
+
+## Установка и запуск
 
 Для установки клонируйте репозиторий и запустите `cabal install`:
 
@@ -14,24 +46,28 @@ $ cd reversi
 $ cabal install
 ```
 
-Установка SQLite
+После установки запуск осуществляется командой `reversi`:
 
-Скачать https://www.sqlite.org/download.html 
-	
-32-bit DLL (x86) for SQLite verison 3.8.10.
-(sha1: 3607eac9af97cec3e3d5e5945499cb6b7aab15e7)
+```
+$ reversi
+```
 
-Распаковать архив в C:\sqlite
+Для сборки и запуска текущей версии непосредственно из репозитория используйте `cabal run`:
 
-Выполнить
 ```
 $ cd reversi
-$ cabal install sqlite --extra-include-dirs=C:\sqlite --extra-lib-dirs
-=C:\sqlite
-$ cabal install persistent
-$ cabal install persistent-hssqlppp
-$ cabal install persistent-sqlite
+$ cabal run
 ```
 
-(на cabal install persistent-hssqlppp могут быть ошибки -- это норма. Если 
-завис на какой-то строчке, ctrl + c посылаем)
+## Документация
+
+Автоматическая документация кода сгенерирована при помощи [Haddock](https://www.haskell.org/haddock/).
+
+Онлайн документация доступна здесь: http://cmc-haskell-2015.github.io/reversi/docs/
+
+Локально документацию можно собрать, запустив простую команду:
+
+```
+$ cabal haddock
+```
+
