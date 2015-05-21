@@ -16,11 +16,40 @@ build-type:          Simple
 extra-source-files:  README.md
 cabal-version:       >=1.10
 
+library
+  exposed-modules:
+    Core
+    Db
+    Interface.CLI
+    Interface.GUI
+    Types
+  build-depends:       base >=4.6 && <4.8
+                     , gloss
+                     , transformers
+                     , split
+                     , time
+                     , text
+                     , conduit
+                     , persistent
+                     , persistent-template
+                     , persistent-sqlite
+  hs-source-dirs:      src
+  default-language:    Haskell2010
+
 executable reversi
   main-is:             Main.hs
-  -- other-modules:    Core.hs , Types.hs, Interface.hs
+  -- other-modules:       
   -- other-extensions:    
-  build-depends:       base >=4.6 && <4.8 , gloss, persistent, time, conduit, transformers, persistent-hssqlppp, persistent-sqlite
+  build-depends:       base >=4.6 && <4.8
+                     , gloss
+                     , transformers
+                     , split
+                     , time
+                     , text
+                     , conduit
+                     , persistent
+                     , persistent-template
+                     , persistent-sqlite
   hs-source-dirs:      src
   default-language:    Haskell2010
 
